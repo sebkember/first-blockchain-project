@@ -14,3 +14,4 @@ while True:
     print("New state of chain: ")
     print(blockchain.__repr__())
     print(f"Chain valid: {blockchain.is_valid()}")
+

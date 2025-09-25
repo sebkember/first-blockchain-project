@@ -1,4 +1,5 @@
 from block import Block
+import psycopg2
 import datetime
 
 class Blockchain:
@@ -19,12 +20,69 @@ class Blockchain:
         # Add the genesis block to the chain
         self.chain.append(genesis_block)
     
+    # Display the blockchain as a string
     def __repr__(self):
         block_str = ""
         for block in self.chain:
             block_str += block.__repr__() + "\n-->\n"
         
         return block_str
+    
+    # Loads the current state of the blockchain from the database
+    def load_blockchain(self):
+        # Connect to the database
+        con = psycopg2.connect(
+            dbname="blockchain_db",
+            user="TBD",
+            password="TBD",
+            host="localhost",
+            port="5432"
+        )
+        try:
+
+            # Create a cursor
+            cur = con.cursor()
+
+            # Execute a query to fetch all blocks
+            result = cur.execute("SELECT timestamp, data, previous_hash, proof_of_work FROM block ORDER BY block_id;")
+            row_tuples = cur.fetchall()
+
+            if (len(row_tuples == 0)):
+                # Blockchain is empty, add the genesis block
+                genesis_block = self.get_genesis_block()
+
+                # Add the genesis block to the database
+                result = cur.execute("INSERT INTO block (timestamp, data, previous_hash, proof_of_work) VALUES (%s, %s, %s, %s)", (genesis_block.timestamp, genesis_block.data, genesis_block.previous_hash, genesis_block.proof_of_work))
+
+            else:
+                # Reset the chain of the current blockchain object
+                self.chain = []
+
+                # Iterate over all records in the database
+                for tuple in row_tuples:
+                    # Create a new block object
+                    new_block = Block(timestamp=tuple[0], data=tuple[1], previous_hash=tuple[2], proof_of_work=tuple[3])
+
+                    # Add the block to the chain
+                    self.add_block(new_block)
+
+                # Check that the chain is valid
+                chain_valid = self.is_valid()
+
+                if (not chain_valid):
+                    raise Exception("Loaded blockchain is invalid")
+            
+            
+        except:
+            print("Error loading blockchain from database")
+
+        finally:
+            # Commit and close the connection
+            con.commit()
+            con.close()
+
+
+            
 
     # Adds a new block to the chain
     def add_block(self, block):
@@ -34,6 +92,10 @@ class Blockchain:
     # Gets the last block in the blockchain
     def get_last_block(self):
         return self.chain[-1]
+    
+    # Gets the first block in the blockchain
+    def get_genesis_block(self):
+        return self.chain[0]
     
     # Checks if the blockchain is valid
     def is_valid(self):
