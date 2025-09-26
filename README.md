@@ -1,0 +1,1 @@
+Simple blockchain written in Python, with data persistence implemented through a PostgreSQL database
